@@ -21,8 +21,11 @@ Does not require MuJoCo for this console-based version.
 import numpy as np
 from itertools import combinations
 from enum import Enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List
+from .connection_graph import ConnectionEvent
+from .connection_feasibility import FeasibilityParams
+from .event_applier import EventResult
 
 class ModuleState(Enum):
     ATTACHED = "attached"
@@ -47,6 +50,9 @@ class ExecutionStep:
     states: Dict[int, str]
     collision: bool
     events: List[str]
+    event_results: List['EventResult'] = field(default_factory=list)  # New: event application results
+    active_edges: int = 0  # New: edge count after events
+    reachable_modules: set = field(default_factory=set)  # New: reachable module IDs after events
 
 class ExecutionTrace:
     def __init__(self):
@@ -164,9 +170,10 @@ def check_context_collisions(context: ExecutionContext, threshold=0.2):
                 return True
     return False
 
-def simulate_modular_reconfig(num_steps=8, detach_step=4, repulsion_enabled=True):
+def simulate_modular_reconfig(num_steps=8, detach_step=4, repulsion_enabled=True, schedule: Dict[int, List[ConnectionEvent]] = None):
     """
-    Run the modular reconfiguration simulation with explicit execution layer.
+    Run the modular reconfiguration simulation with explicit execution layer and Phase-3 event integration.
+    events_by_step: Use safe attach/detach APIs from ConnectionGraph.
     """
     print("=== Modular Robot Reconfiguration Simulation (Execution Layer) ===")
     print(f"Parameters: {num_steps} steps, detach at step {detach_step}")
@@ -186,7 +193,26 @@ def simulate_modular_reconfig(num_steps=8, detach_step=4, repulsion_enabled=True
         root_id=1
     )
 
-    # Prepare scheduled events
+    # Phase-3: Initialize ConnectionGraph and ExecutorWrapper if events
+    if schedule:
+        from .connection_graph import ConnectionGraph, SiteRef
+        from .connection_api import ExecutorWrapper
+        import ubot
+        ubot_kin = ubot.UBotKinematics("assets/ubot_ax_centered.xml")
+        T_world = {mid: np.eye(4) for mid in context.positions}
+        for mid, pos in context.positions.items():
+            T_world[mid][:3,3] = pos.copy()
+        executor = ExecutorWrapper(T_world, {mid: np.array([0.0, 0.0]) for mid in context.positions}, ubot_kin)
+        graph = ConnectionGraph()
+        # Add initial chain edges for testing
+        from .connection_graph import SiteRef
+        graph.apply(ConnectionEvent(kind="attach", a=SiteRef(1,"ma","right"), b=SiteRef(2,"mb","left"), yaw_snap_deg=0, T_a_b=np.eye(4)))
+        graph.apply(ConnectionEvent(kind="attach", a=SiteRef(2,"ma","right"), b=SiteRef(3,"mb","left"), yaw_snap_deg=0, T_a_b=np.eye(4)))
+    else:
+        executor = None
+        graph = None
+
+    # Prepare scheduled events (legacy for compat)
     events = [ExecutionEvent(detach_step, "detach", 3)] if detach_step else []
 
     # Generate the reconfiguration path
@@ -200,13 +226,34 @@ def simulate_modular_reconfig(num_steps=8, detach_step=4, repulsion_enabled=True
     for step_idx, config in enumerate(path):
         step_events = []
 
-        # 1. Handle events (only for this step)
+        # 1. Handle legacy events (only for this step)
         for event in events:
             if event.step == step_idx:
                 if event.type == "detach":
                     context.states[event.module_id] = ModuleState.DETACHED
                     step_events.append(f"{event.type} module {event.module_id}")
                     print(f"STEP {step_idx}: Event processed - Detached module {event.module_id}")
+
+        # Phase-3: Handle Phase-3 events using EventApplier
+        if schedule and step_idx in schedule:
+            params = FeasibilityParams(enable_local_solve=True, pos_tol=1e-3, yaw_tol_deg=5, z_dot_max=-0.999)
+            for event in schedule[step_idx]:
+                from .event_applier import apply_event
+                result = apply_event(graph, executor, event, params)
+                step_record.event_results.append(result)  # Append to step
+                if result.trace_events:
+                    print(f"STEP {step_idx}: Event processed - {result.trace_events[0]}")
+                step_events.extend(result.trace_events)
+                # Note: states will be updated after all events
+
+        # After all events, recompute states from graph connectivity
+        all_module_ids = list(context.positions.keys())
+        if graph:
+            graph_states = graph.module_states(all_module_ids)
+            context.states = {mid: ModuleState.DETACHED if graph_states[mid] == ModuleState.DETACHED else ModuleState.ATTACHED for mid in all_module_ids}
+        else:
+            # No graph, keep context.states as is
+            pass
 
         # 2. Update attached modules along the path
         update_attached_modules(context, config)
@@ -252,6 +299,8 @@ def simulate_modular_reconfig(num_steps=8, detach_step=4, repulsion_enabled=True
         print(f"  Detached moved at steps: {verification_report.detached_frozen_failures}")
     if verification_report.events_failures:
         print(f"  Event failures at steps: {verification_report.events_failures}")
+    if not verification_report.collision_free:
+        print(f"  Collision steps: {verification_report.collision_failures}")
     if verification_report.collision_failures:
         print(f"  Collisions at steps: {verification_report.collision_failures}")
 
@@ -277,6 +326,8 @@ def simulate_modular_reconfig(num_steps=8, detach_step=4, repulsion_enabled=True
     print("VERIFICATION: Execution completed successfully!")
 
     print("Simulation complete.")
+
+    return trace  # Return trace for testing
 
 if __name__ == "__main__":
     # Run the example simulation

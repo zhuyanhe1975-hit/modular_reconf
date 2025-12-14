@@ -1,0 +1,102 @@
+<mujoco model="ubot_ax_centered">
+  <compiler angle="degree" coordinate="local"/>
+  <option gravity="0 0 -9.81"/>
+
+  <worldbody>
+
+    <!-- ================= -->
+    <!-- Central connector -->
+    <!-- ================= -->
+    <body name="ax" pos="0 0 0">
+      <!-- ax is purely structural: no geom, no connection faces -->
+
+      <!-- ================= -->
+      <!-- Half module A (ma) -->
+      <!-- ================= -->
+      <body name="ma" pos="0 0 0">
+        <!-- Joint: ax -> ma -->
+        <joint
+          name="j_ax_ma"
+          type="hinge"
+          axis="1 0 0"
+          pos="0 0 0"
+          range="-90 90"/>
+
+        <!-- geometry (placeholder) -->
+        <geom
+          name="ma_face_right"
+          type="box"
+          pos="0.04 0.0 0.0"
+          size="0.002 0.04 0.04"
+          rgba="1 0 0 1"/>
+        <geom
+          name="ma_face_bottom"
+          type="box"
+          pos="0.0 0.0 -0.04"
+          size="0.04 0.04 0.002"
+          rgba="1 0 0 1"/>
+
+        <!-- sites: +Z outward normal = (origin->site), +Y = body +Y -->
+        <!-- ma_connector_right: pos = +X => z = +X, y = +Y -->
+        <site
+          name="ma_connector_right"
+          pos="0.05 0.0 0.0"
+          quat="0.70710678 0 0.70710678 0"
+          size="0.01"/>
+        <!-- ma_connector_bottom: pos = -Z => z = -Z, y = +Y -->
+        <site
+          name="ma_connector_bottom"
+          pos="0.0 0.0 -0.05"
+          quat="0 0 1 0"
+          size="0.01"/>
+
+        <!-- Connection faces (semantic only, Phase-1) -->
+        <!-- ma_right, ma_down -->
+      </body>
+
+      <!-- ================= -->
+      <!-- Half module B (mb) -->
+      <!-- ================= -->
+      <body name="mb" pos="0 0 0">
+        <!-- Joint: ax -> mb -->
+        <joint
+          name="j_ax_mb"
+          type="hinge"
+          axis="0 0 1"
+          pos="0 0 0"
+          range="-90 90"/>
+
+        <geom
+          name="mb_face_left"
+          type="box"
+          pos="-0.04 0.0 0.0"
+          size="0.002 0.04 0.04"
+          rgba="0 0 1 1"/>
+        <geom
+          name="mb_face_top"
+          type="box"
+          pos="0.0 0.0 0.04"
+          size="0.04 0.04 0.002"
+          rgba="0 0 1 1"/>
+
+        <!-- mb_connector_left: pos = -X => z = -X, y = +Y -->
+        <site
+          name="mb_connector_left"
+          pos="-0.05 0.0 0.0"
+          quat="0.70710678 0 -0.70710678 0"
+          size="0.01"/>
+        <!-- mb_connector_up: pos = +Z => z = +Z, y = +Y -->
+        <site
+          name="mb_connector_top"
+          pos="0.0 0.0 0.05"
+          quat="1 0 0 0"
+          size="0.01"/>
+
+        <!-- Connection faces -->
+        <!-- mb_left, mb_up -->
+      </body>
+
+    </body>
+
+  </worldbody>
+</mujoco>

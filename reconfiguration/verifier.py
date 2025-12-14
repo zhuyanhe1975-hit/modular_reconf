@@ -95,12 +95,10 @@ def verify_execution(trace: ExecutionTrace,
                     print(f"DEBUG: Expected detach for {mid} at {step_idx}, got {actual_detach_events.get(mid)}")
 
     # Check collision free
-    if expected_collision_free:
-        collisions_found = [step.step_index for step in trace._steps if step.collision]
-        if collisions_found:
-            report.collision_free = False
-            report.collision_failures = collisions_found
-            print(f"DEBUG: Collisions at steps {collisions_found}")
+    collisions_found = [step.step_index for step in trace._steps if step.collision]
+    report.collision_free = len(collisions_found) == 0
+    if collisions_found:
+        report.collision_failures = collisions_found
 
     return report
 

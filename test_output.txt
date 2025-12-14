@@ -1,0 +1,51 @@
+.........................FFF.....................s..                     [100%]
+=================================== FAILURES ===================================
+_____________________________ test_attach_success ______________________________
+
+setup_graph_executor = (ConnectionGraph(edges={}), <reconfiguration.connection_api.ExecutorWrapper object at 0x7e73e7f53320>, FeasibilityParams(pos_tol=1.0, z_dot_max=-0.99, yaw_candidates_deg=(0, 90, 180, 270), yaw_tol_deg=10, enable_local_solve=False))
+
+    def test_attach_success(setup_graph_executor):
+        """Test successful attach event."""
+        graph, executor, params = setup_graph_executor
+        event = ConnectionEvent(kind="attach", a=SiteRef(1, "ma", "right"), b=SiteRef(2, "mb", "left"), yaw_snap_deg=0)
+        result = apply_event(graph, executor, event, params)
+>       assert result.ok == True
+E       AssertionError: assert False == True
+E        +  where False = EventResult(ok=False, reason='pos', applied_edges_delta=0, pre_metrics=None, post_metrics=None, trace_events=[]).ok
+
+tests/test_event_applier.py:42: AssertionError
+_________________________ test_attach_occupied_reject __________________________
+
+setup_graph_executor = (ConnectionGraph(edges={}), <reconfiguration.connection_api.ExecutorWrapper object at 0x7e73e7f5dbb0>, FeasibilityParams(pos_tol=1.0, z_dot_max=-0.99, yaw_candidates_deg=(0, 90, 180, 270), yaw_tol_deg=10, enable_local_solve=False))
+
+    def test_attach_occupied_reject(setup_graph_executor):
+        """Test attach to occupied site rejects."""
+        graph, executor, params = setup_graph_executor
+        # First attach successfully
+        event1 = ConnectionEvent(kind="attach", a=SiteRef(1, "ma", "right"), b=SiteRef(2, "mb", "left"), yaw_snap_deg=0)
+        result1 = apply_event(graph, executor, event1, params)
+>       assert result1.ok
+E       AssertionError: assert False
+E        +  where False = EventResult(ok=False, reason='pos', applied_edges_delta=0, pre_metrics=None, post_metrics=None, trace_events=[]).ok
+
+tests/test_event_applier.py:57: AssertionError
+_____________________________ test_detach_success ______________________________
+
+setup_graph_executor = (ConnectionGraph(edges={}), <reconfiguration.connection_api.ExecutorWrapper object at 0x7e73e7f5e690>, FeasibilityParams(pos_tol=1.0, z_dot_max=-0.99, yaw_candidates_deg=(0, 90, 180, 270), yaw_tol_deg=10, enable_local_solve=False))
+
+    def test_detach_success(setup_graph_executor):
+        """Test successful detach event."""
+        graph, executor, params = setup_graph_executor
+        # First attach
+        attach_event = ConnectionEvent(kind="attach", a=SiteRef(1, "ma", "right"), b=SiteRef(2, "mb", "left"), yaw_snap_deg=0)
+        attach_result = apply_event(graph, executor, attach_event, params)
+>       assert attach_result.ok
+E       AssertionError: assert False
+E        +  where False = EventResult(ok=False, reason='pos', applied_edges_delta=0, pre_metrics=None, post_metrics=None, trace_events=[]).ok
+
+tests/test_event_applier.py:73: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_event_applier.py::test_attach_success - AssertionError: ass...
+FAILED tests/test_event_applier.py::test_attach_occupied_reject - AssertionEr...
+FAILED tests/test_event_applier.py::test_detach_success - AssertionError: ass...
+3 failed, 48 passed, 1 skipped in 0.32s
