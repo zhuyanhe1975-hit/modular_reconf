@@ -237,6 +237,24 @@ def simulate_modular_reconfig(num_steps=8, detach_step=4, repulsion_enabled=True
     # Execution Trace Summary
     collision_warnings = trace.summarize()
 
+    # Verification using Verifier module
+    from .verifier import verify_execution
+    verification_report = verify_execution(trace, expected_detach_steps=[detach_step], expected_collision_free=False)
+
+    print("\n=== Verification Results ===")
+    print(f"- Attached modules moved: {verification_report.attached_moved}")
+    print(f"- Detached modules frozen: {verification_report.detached_frozen}")
+    print(f"- Events correct: {verification_report.events_correct}")
+    print(f"- Collision free: {verification_report.collision_free}")
+    if verification_report.attached_moved_failures:
+        print(f"  Failures: {verification_report.attached_moved_failures}")
+    if verification_report.detached_frozen_failures:
+        print(f"  Detached moved at steps: {verification_report.detached_frozen_failures}")
+    if verification_report.events_failures:
+        print(f"  Event failures at steps: {verification_report.events_failures}")
+    if verification_report.collision_failures:
+        print(f"  Collisions at steps: {verification_report.collision_failures}")
+
     # Final verification
     print("\n=== Final Verification ===")
     attached_moved = all(

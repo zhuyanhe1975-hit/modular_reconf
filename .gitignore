@@ -1,1 +1,24 @@
+# Environment and cache
 .venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE and editors
+.vscode/
+.idea/
+
+# OS generated
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Data and output files
+data/
+*.pkl
+*.mat
